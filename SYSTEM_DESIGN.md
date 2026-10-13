@@ -6,9 +6,9 @@
 
 **Decision:** At a recommendation opportunity during a viewer's visit, choose **one** of three eligible candidate videos. The three-video shortlist is an educational simplification, not an RL requirement. The candidate generator supplies the options; the policy chooses one. Cosine similarity could help retrieve candidates, but is **not** the RL model.
 
-**Measurement goal (agreed):** For an earlier recommendation, did the viewer **return to the same app within seven days and watch any video**? The later video can be from a different channel; it does not have to be the one recommended earlier. A visit without a watch is a *visit*, not an *engaged return*. Record immediate response to the chosen video separately from engaged return.
+**Measurement goal (agreed):** For an earlier recommendation, did the viewer **return to the same app within seven days and watch any video**? The later video can be from a different channel; it does not have to be the one recommended earlier. **Log every app visit**, including visits without a watch, but a visit without a qualifying watch is **not** an *engaged return*. Such a visit does not turn an earlier pending label into **yes** or **no**; it stays pending until a qualifying engaged return occurs or its seven-day window closes. Record immediate response to the chosen video separately from engaged return.
 
-**Agreed watch rule:** At least **30 seconds of playback** counts as a watch; a click with less playback remains a click but not a watch. The threshold is a synthetic-project choice, not a research or product standard. Candidate videos must be long enough for it to be achievable. **Not yet agreed:** The seven-day boundary, assignment of later outcomes when several recommendations occur, and **training reward**. Do not treat the measurement definition as an already specified RL reward. Business impact is also not yet measured: a synthetic engaged return does not prove real retention or revenue.
+**Agreed watch rule:** At least **30 seconds of playback** counts as a watch; a click with less playback remains a click but not a watch. The threshold is a synthetic-project choice, not a research or product standard. Candidate videos must be long enough for it to be achievable. **Agreed window boundary:** Measure **7 × 24 hours after the recommendation's impression timestamp**. The viewer must start a new visit after that impression and complete the qualifying 30 seconds of playback by the deadline (inclusive). A later watch still belongs in the logs but does not count *within seven days* for this decision; a new recommendation would start its own window. **Agreed descriptive labeling:** A later engaged visit can mark every earlier recommendation for that viewer **yes** if the visit began after its impression and the qualifying watch completed within its own seven-day window. Count that visit **once** in viewer-level totals, not once per recommendation. A video first shown during that visit stays **pending** until a later visit. These labels describe timing, **not which video caused the return or which action should receive RL credit**. **Not yet agreed:** Training-reward and causal-credit rules. Do not treat the measurement definition as an already specified RL reward. Business impact is also not yet measured: a synthetic engaged return does not prove real retention or revenue.
 
 ## End-to-end flow
 
@@ -38,6 +38,8 @@ flowchart TD
 
 ## Step 2 — Data and observation
 
+**Visit and watch counting (agreed):** One app visit may contain several video impressions and watches. Each video reaching 30 seconds is a qualifying watch, but the visit counts as **one engaged visit** for viewer-level return metrics, not one per watched video. A viewer can also make multiple visits on the same calendar day; count distinct visits rather than assuming one visit per day. The app may ask the policy for another recommendation after a video, creating a **new decision within the same visit**; this is not a return visit. A viewer may instead find the next video through search or their own choice—log that watch, but **do not attribute the video choice to the policy**. Within a later qualifying visit, apply the previously agreed descriptive yes/pending labels to earlier recommendations based on their individual windows, without counting the underlying visit multiple times.
+
 For each recommendation opportunity, the policy's **one current observation** can contain many values:
 
 | Part | Example available *before* the action | What it does not contain |
@@ -64,7 +66,7 @@ Day 11: day-4 measurement window closes; if no qualifying engaged return
         occurred, its label would become no. An earlier yes remains yes.
 ```
 
-The day-8 video can come from the **same or a different channel**. An app open without watching is not an engaged return. If the data end before a window closes, the outcome is unresolved (**pending**, not automatically **no**). Exactly when a watch qualifies and how multiple decisions share later outcomes still require design. Observing day-8 activity after video A does **not** prove video A caused it.
+The day-8 video can come from the **same or a different channel**. An app open without watching is not an engaged return. If the data end before a window closes, the outcome is unresolved (**pending**, not automatically **no**). The 30-second rule defines a qualifying watch; overlapping decision-level labels may both become **yes**, but the actual engaged visit is still one viewer event and training credit remains undecided. Observing day-8 activity after video A does **not** prove video A caused it.
 
 The [SlateQ paper](https://ar5iv.labs.arxiv.org/html/1905.12767) discusses consecutive observed visits spaced apart in time and uses elapsed time between visits in its long-term evaluation. It does **not** disclose our proposed fields, fixed history window, or seven-day return label.
 
