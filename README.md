@@ -1,45 +1,49 @@
-# Video recommender RL: stage 1 — define the decision
+# Video recommender RL — learning project
 
-This is a **synthetic learning project**, not a real video service or a copy of YouTube's implementation. This first stage defines what one recommendation decision means. There is no simulator or trained model yet.
+**Status:** design only. No simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
 
-## One decision, in plain language
+## What decision does the model make?
 
-A simple candidate generator has already shortlisted three videos. The agent must pick **one** to show to a synthetic viewer. Before choosing, it can inspect a summary of recent behavior and the attributes of all three candidates. It cannot see whether the viewer *will* click or return later.
+**When a viewer opens the app**, a candidate generator supplies three eligible videos. The policy sees what is known **before** the recommendation: the viewer's recorded history and visit context, plus features of the three candidates. It chooses **one candidate index** (`0`, `1`, or `2`). The simulator will later generate the viewer's response and possible future visits.
 
-| Concept | Toy definition |
-| --- | --- |
-| **Viewer's hidden preference** | The simulator knows which topic this synthetic viewer genuinely likes. The agent **does not receive this value directly**; it must use observed behavior as clues. |
-| **Observed viewer state** | Recent topic-watch counts, recent skips, and current day (normalized if passed to a model). These describe the viewer's history and context, not their true hidden preference. |
-| **Candidate features** | For each of three shortlisted videos: topic, sensationalism/clickbait level, and an **estimated immediate-click score** from a separate, simple candidate generator. These describe the possible choices, not the viewer's state. |
-| **Observation to the policy** | The viewer-state features **together with** the three candidates' features and scores. These can be encoded as one array later, but their roles remain different. No future click or return is included. |
-| **Action** | Integer `0`, `1`, or `2`: show the corresponding shortlisted video. The action is a shortlist *index*, not a permanent video ID. |
-| **Outcome and reward** | After showing the video, the simulator generates an immediate click response and, separately, whether the viewer returns for the next opportunity. For learning, a possible objective is `click_reward + 2 × return_reward`, where each term is 0 or 1. The factor 2 is a **teaching choice** to be tested, not a real business value. A click does **not** automatically cause a return. |
-| **Next observation** | An updated history: what was shown, whether it was clicked/skipped, and the next opportunity's shortlist, **if** the viewer returns. If they do not return, the episode ends. |
-| **Episode** | Up to 10 recommendation opportunities for one synthetic viewer, ending earlier if the simulated viewer leaves. Ten is a toy limit, not a production time horizon. |
+```text
+Current observation (history + time context + candidate features)
+    → policy → action: choose one of the three candidates
+    → show video → log impression and any immediate click/watch
+    → later visits, if any, create new observations and decisions
+```
 
-The *baseline* is a non-RL rule: select the candidate with the highest **estimated immediate-click score**. A future RL policy would select among the **same three candidates**, but learn which choices yield better cumulative reward over the episode. We will compare both fairly after building the simulator.
+A video embedding could eventually be one set of candidate features; it is not itself RL. Cosine similarity could help shortlist candidates, but the RL policy is the *decision maker* that learns from subsequent feedback. Three candidates is a teaching-size shortlist, **not** an RL requirement.
 
-## Worked two-decision example (illustrative, not measured)
+## What does “engaged return within seven days” mean?
 
-At day 1, the observed history says the viewer watched two cooking videos and skipped one sports video. Their genuine topic preference is **hidden**. The candidate generator supplies:
+Our agreed **measurement outcome** for a recommendation is: **the viewer returns to the same app within seven days and watches any video**. The later video may be from another channel; it need not be the originally recommended video. Clicking or watching the recommended video *now* is a **separate immediate outcome**. A **watch** means at least **30 seconds of playback**: a click followed by 5 seconds counts as a click, not a watch. This is our agreed synthetic-project rule, not a universal standard; we will use videos long enough for the threshold to be achievable. The exact seven-day boundary and attribution rules are still to be specified before implementation. Seven days is our project choice, not a number prescribed by a paper.
 
-| Action index | Video | Estimated immediate-click score |
-| ---: | --- | ---: |
-| 0 | Sensational sports clip | 0.9 |
-| 1 | Helpful cooking lesson | 0.6 |
-| 2 | Short travel clip | 0.4 |
+A simplified event timeline:
 
-The click-score baseline picks **action 0**. Suppose this viewer clicks, but does **not** return: click `1`, return `0`, reward `1 + 2×0 = 1`; the episode stops. This is **one possible synthetic outcome**, not something the agent knew before acting.
+| Day | Recorded event | Status for the day-4 recommendation |
+| ---: | --- | --- |
+| 4 | Viewer visits; recommended video A is shown and clicked | Immediate click = yes; engaged return = **pending** |
+| 5–7 | Viewer does not open the app | No recommendation action; engaged return still **pending** |
+| 8 | Viewer opens the app and watches video B, possibly from another channel | Engaged return = **yes** |
+| 11 | Seven-day window ends | If no qualifying return-and-watch occurred, mark **no**; do not change an earlier **yes** |
 
-To illustrate a *different possible trajectory from the same starting point*, suppose another policy picks **action 1**. The viewer clicks and returns: click `1`, return `1`, reward `1 + 2×1 = 3`. On day 2, the observation now includes the day-1 cooking click, and the next three candidate videos. If the agent picks a good day-2 video and the viewer clicks but does not return, the second reward is `1`, so that trajectory totals `3 + 1 = 4`. The two trajectories are **hypothetical**: they do not prove that a cooking video caused the return or that RL is better. The later simulator must specify and test how outcomes are generated.
+Video B may or may not have been recommended on day 8. The watch is an app-level event, not evidence that the viewer watched video A again. Merely opening the app without watching does **not** satisfy the engaged-return measure. A missing visit on day 5 does **not** end the viewer's episode or count as skipping a video; they could return on day 8. Day 8 would also be a **new** recommendation decision with a new observation, if that visit includes a recommendation opportunity. The day-8 watch is not available to the day-4 policy when it chooses video A.
 
-**Reacher connection:** a single fingertip-to-target pass did not mean the arm stayed close. Likewise, a single video click does not mean a viewer will come back. In both cases, the objective, the reward, and the evaluation metric need to be defined separately.
+If our recorded data stops before day 11, an unresolved day-4 outcome is **not yet known**; it must not automatically be labeled “no.” And observing the day-8 visit after showing A does **not** prove A caused the return. A fair policy comparison would be needed to investigate that.
 
-## What comes next
+## What are we optimizing?
 
-Only after we agree on this definition will we build a tiny Gymnasium environment, inspect a few manual episodes, compare simple baselines, train an RL model, and finally evaluate it. We will do **one stage at a time**, not generate the entire system now.
+Engaged return is the **agreed measurement**, not yet a finalized training reward. An older example proposed `click + 2 × return`; that bonus was arbitrary and **is not our chosen rule**. We will define precisely how the policy learns from delayed events and how to handle multiple intervening decisions before coding. We will report immediate clicks, watches, engaged returns, and potential negative user outcomes separately, rather than claim that a synthetic reward is business impact.
 
-### Reading
+## Learning stages
 
-- [Google's SlateQ paper](https://ar5iv.labs.arxiv.org/html/1905.12767) illustrates a published long-term recommendation objective; this toy setup is **not** its actual state representation or architecture.
-- [Gymnasium guide to custom environments](https://gymnasium.farama.org/introduction/create_custom_env/) explains the observation/action/reward/next-observation interface we will implement later.
+1. **Now:** finalize event definitions, time windows, attribution, and training reward with one worked viewer timeline.
+2. Generate seeded, timestamped synthetic visits, impressions, clicks, and watches; inspect the logs.
+3. Test simple baselines before training an RL policy.
+4. Train a policy in a validated simulator; evaluate saved models on different seeds and inspect failures.
+5. Connect simulated measurements to what a real client would need: authorized logs, valid comparisons, user-experience safeguards, and an actual business outcome. Synthetic results alone cannot establish a revenue or retention lift.
+
+## Research context
+
+The [SlateQ paper](https://ar5iv.labs.arxiv.org/html/1905.12767) describes long-term recommendation value and consecutive *visits* that may be spaced apart in time. It does not publish our toy observation schema, our seven-day return definition, or a specific seven-day history lookback. [Gymnasium's custom-environment guide](https://gymnasium.farama.org/introduction/create_custom_env/) describes the `reset`/`step` interface we may implement after the rules are agreed.
