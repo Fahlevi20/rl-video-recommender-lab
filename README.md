@@ -1,6 +1,6 @@
 # Video recommender RL — learning project
 
-**Status:** early prototype: a candidate generator, random recommendation baseline, and hand-written event-history check exist, but no viewer simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
+**Status:** early prototype: a candidate generator, random and profile-based recommendation baselines, and hand-written event-history check exist, but no viewer simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
 
 ## What decision does the model make?
 
@@ -55,6 +55,10 @@ From this project directory, run `python candidate_generator.py` to print the ca
 ## Try the random recommendation baseline
 
 Run `python random_baseline.py` from this project directory. It prints `[STEP 1]` catalog filtering, `[STEP 2]` each three-video shortlist, `[STEP 3]` the seeded random index, and `[STEP 4]` the **one selected video** for two examples. The generator and baseline use separate random-number streams so each has a reproducible sequence. This baseline **does not use U1's profile, the earlier 5-second play, or any other viewer history**; it is a comparison rule, not a trained RL model. The two printed examples do not simulate visits, impressions, or feedback.
+
+## Try the profile-based baseline
+
+Run `python profile_baseline.py` to see a step-by-step example: a **stated, recorded** cooking interest, two cooking candidates plus one sports candidate, and a seeded tie-break that selects **one** cooking video. `choose_profile_video(candidates, recorded_interest, rng)` returns the selected candidate index. If there is no recorded interest or no matching candidate, it chooses randomly among the current shortlist; an empty shortlist raises an error. This rule **does not** read a private simulator preference or the earlier 5-second playback, and it is **not trained**. The printed example uses an illustrative shortlist rather than generating it from the catalog; no visit or viewer-response events are simulated.
 
 ## First hand-written event log
 
