@@ -1,0 +1,14 @@
+event_id,timestamp,viewer_id,visit_id,decision_id,video_id,event_type,source,watch_seconds
+E1,2026-10-04T10:00:00,U1,V1,,,visit_started,,
+E2,2026-10-04T10:01:00,U1,V1,D1,A,video_shown,model,
+E3,2026-10-04T10:02:00,U1,V1,D1,A,video_clicked,model,
+E4,2026-10-04T10:03:00,U1,V1,D1,A,video_watched,model,40
+E5,2026-10-08T19:00:00,U1,V2,,,visit_started,,
+E6,2026-10-08T19:01:00,U1,V2,D2,C,video_shown,model,
+E7,2026-10-08T19:03:00,U1,V2,D2,C,video_watched,model,35
+E8,2026-10-12T09:00:00,U1,V3,,,visit_started,,
+E9,2026-10-12T09:01:00,U1,V3,D3,B,video_shown,model,
+E10,2026-10-12T09:02:00,U1,V3,D3,B,video_clicked,model,
+E11,2026-10-12T09:02:05,U1,V3,D3,B,video_playback,model,5
+E12,2026-10-14T12:00:00,U1,V4,,,visit_started,,
+E13,2026-10-14T12:01:00,U1,V4,D4,A,video_shown,model,
