@@ -1,6 +1,6 @@
 # Video recommender RL — learning project
 
-**Status:** design only. No simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
+**Status:** early prototype: a candidate generator, random recommendation baseline, and hand-written event-history check exist, but no viewer simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
 
 ## What decision does the model make?
 
@@ -15,7 +15,7 @@ Current observation (history + time context + candidate features)
 
 A video embedding could eventually be one set of candidate features; it is not itself RL. Cosine similarity could help shortlist candidates, but the RL policy is the *decision maker* that learns from subsequent feedback. Three candidates is a teaching-size shortlist, **not** an RL requirement.
 
-**Agreed shortlist design (not implemented):** Start with a synthetic catalog, keep videos eligible to be shown and long enough for the 30-second watch rule, then supply three **distinct** actual videos with different topics when available—for example, one cooking, one sports, and one music video. Use seeded random selection among eligible videos so an experiment can be reproduced. If fewer than three topics are available, fill the remaining slots by seeded random selection of **different** eligible videos; topics may repeat (e.g., cooking A, cooking B, sports C). A fixed seed makes the sequence reproducible, **not** necessarily identical on every visit. The candidate generator puts these videos on the menu; the recommendation rule chooses **one actual video** from that menu. A cooking video can be chosen only if one is in the current shortlist. For the first synthetic catalog we will ensure at least three eligible videos; the behavior when fewer than three videos are eligible remains undecided.
+**First shortlist prototype:** [candidate_generator.py](candidate_generator.py) holds a tiny synthetic catalog, keeps videos marked eligible and at least 30 seconds long, then supplies three **distinct** actual videos with different topics when available—for example, one cooking, one sports, and one music video. It uses seeded random selection so an experiment can be reproduced. If fewer than three topics are available, it fills the remaining slots from **different** eligible videos; topics may repeat (e.g., cooking A, cooking B, sports C). A fixed seed reproduces the sequence, **not** necessarily the same shortlist every visit. This is only the menu: no recommendation rule chooses a video yet. A cooking video can be chosen only if one is in the current shortlist. The function raises `ValueError` if fewer than three eligible videos exist; production behavior for that case remains to be designed.
 
 **Illustrative D1 → D2 example (not a field in the current sample log):** The synthetic simulator may privately represent viewer U1 as interested in cooking to generate plausible behavior. At decision D1, the model does **not** receive that private preference; it chooses cooking video A using only the available history, context, and candidate features. If U1 then watches A, that watch is logged **after** D1. When U1 later visits for decision D2, the same model can use the recorded watch of A as history and may choose a *different* cooking video from D2's candidates. It cannot use D2's future watch or read the simulator's private preference. This is an example of how we could generate synthetic behavior, not a finalized viewer-response rule.
 
@@ -47,6 +47,14 @@ Engaged return is the **agreed measurement**, not yet a finalized training rewar
 3. Test simple baselines before training an RL policy.
 4. Train a policy in a validated simulator; evaluate saved models on different seeds and inspect failures.
 5. Connect simulated measurements to what a real client would need: authorized logs, valid comparisons, user-experience safeguards, and an actual business outcome. Synthetic results alone cannot establish a revenue or retention lift.
+
+## Try the candidate generator
+
+From this project directory, run `python candidate_generator.py` to print the catalog, why each video is kept or excluded, two visit shortlists, and a fallback example with two cooking videos. Run `python -m unittest discover -p "test*.py"` to test eligibility, distinct videos, topic diversity, and seed reproducibility alongside the event-history checks. The printed visits are **shortlist examples only**: no viewer response, visit event, or model recommendation is generated.
+
+## Try the random recommendation baseline
+
+Run `python random_baseline.py` from this project directory. It prints `[STEP 1]` catalog filtering, `[STEP 2]` each three-video shortlist, `[STEP 3]` the seeded random index, and `[STEP 4]` the **one selected video** for two examples. The generator and baseline use separate random-number streams so each has a reproducible sequence. This baseline **does not use U1's profile, the earlier 5-second play, or any other viewer history**; it is a comparison rule, not a trained RL model. The two printed examples do not simulate visits, impressions, or feedback.
 
 ## First hand-written event log
 
