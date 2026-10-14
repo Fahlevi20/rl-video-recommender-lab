@@ -1,6 +1,6 @@
 # Video recommender RL — learning project
 
-**Status:** early prototype: a candidate generator, random and profile-based recommendation baselines, and hand-written event-history check exist, but no viewer simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
+**Status:** early prototype: a candidate generator, random and profile-based recommendation baselines, one-video synthetic reaction sampler, independent visit-gap sampler, and hand-written event-history check exist, but no integrated visit/return simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
 
 ## What decision does the model make?
 
@@ -59,6 +59,14 @@ Run `python random_baseline.py` from this project directory. It prints `[STEP 1]
 ## Try the profile-based baseline
 
 Run `python profile_baseline.py` to see a step-by-step example: a **stated, recorded** cooking interest, two cooking candidates plus one sports candidate, and a seeded tie-break that selects **one** cooking video. `choose_profile_video(candidates, recorded_interest, rng)` returns the selected candidate index. If there is no recorded interest or no matching candidate, it chooses randomly among the current shortlist; an empty shortlist raises an error. This rule **does not** read a private simulator preference or the earlier 5-second playback, and it is **not trained**. The printed example uses an illustrative shortlist rather than generating it from the catalog; no visit or viewer-response events are simulated.
+
+## Try one synthetic viewer reaction
+
+Run `python viewer_reaction.py` to print example responses **after** a video is shown. The simulator privately treats U1 as interested in cooking. For a matching topic the invented outcomes are 20% ignore, 20% click and play 5 seconds, 60% click and play 40 seconds; for a nonmatching topic they are 50%, 30%, and 20% respectively. A fixed seed reproduces the examples; individual responses are **not guaranteed** by topic. These invented numbers are for teaching, **not observations about real people**. The policy must not receive the simulator's private interest; a viewer's separately stated profile interest is a different, recorded input. Playback under 30 seconds is still feedback, but not a qualifying watch. This small sampler does **not** generate timestamped event logs, later visits, seven-day labels, or a training reward.
+
+## Try synthetic return times (logging exercise only)
+
+Run `python visit_timing.py` to print a starting visit timestamp and four later visit timestamps. It uses a fixed seed and independently picks a gap of **1, 2, 4, or 8 days**, each with equal chance. This is an invented rule for practicing irregular visits, **not** a realistic estimate or a trained return predictor. The choice of video and its playback do **not** affect these gaps; consequently this rule cannot teach a policy to improve returns through recommendations. It generates **no** timestamped event rows, video decisions, watches, engaged-return labels, or RL reward. We must design video-dependent return behavior separately before training an RL policy on a long-term objective.
 
 ## First hand-written event log
 
