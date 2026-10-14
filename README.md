@@ -1,6 +1,6 @@
 # Video recommender RL — learning project
 
-**Status:** early prototype: a candidate generator, random and profile-based recommendation baselines, one-video synthetic reaction sampler, independent visit-gap sampler, and hand-written event-history check exist, but no integrated visit/return simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
+**Status:** early prototype: a candidate generator, random and profile-based recommendation baselines, one-video synthetic reaction sampler, independent visit-gap sampler, and a one-visit timestamped log example exist, but no multi-visit simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
 
 ## What decision does the model make?
 
@@ -67,6 +67,10 @@ Run `python viewer_reaction.py` to print example responses **after** a video is 
 ## Try synthetic return times (logging exercise only)
 
 Run `python visit_timing.py` to print a starting visit timestamp and four later visit timestamps. It uses a fixed seed and independently picks a gap of **1, 2, 4, or 8 days**, each with equal chance. This is an invented rule for practicing irregular visits, **not** a realistic estimate or a trained return predictor. The choice of video and its playback do **not** affect these gaps; consequently this rule cannot teach a policy to improve returns through recommendations. It generates **no** timestamped event rows, video decisions, watches, engaged-return labels, or RL reward. We must design video-dependent return behavior separately before training an RL policy on a long-term objective.
+
+## Generate one visit's event rows
+
+Run `python one_visit_log.py` from this project directory. It connects the candidate generator, **random baseline**, and response sampler for one synthetic U1 visit, then prints each step and writes [generated_one_visit.csv](generated_one_visit.csv). The file records `visit_started`, `video_shown`, and—if clicked—`video_clicked` and `video_playback` with the playback duration. `source=random_baseline` identifies the selection rule on recommendation-related rows; the visit-start row has no selector. These are **practice timestamps and seeded responses**, not observed real behavior. The script does not overwrite an existing file: to regenerate after inspecting it, rename or remove only `generated_one_visit.csv` first. [sample_events.csv](sample_events.csv) remains the separate hand-written teaching example. This first generated log contains **no later visit, engaged-return label, or RL training reward**. The candidate shortlist and private simulator preference are not columns in this event CSV; they need separate contracts before policy training.
 
 ## First hand-written event log
 
