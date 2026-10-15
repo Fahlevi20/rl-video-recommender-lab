@@ -1,6 +1,6 @@
 # Video recommender RL — learning project
 
-**Status:** early prototype: a candidate generator, random and profile-based recommendation baselines, one-video synthetic reaction sampler, independent visit-gap sampler, and a one-visit timestamped log example exist, but no multi-visit simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
+**Status:** early prototype: a candidate generator, random and profile-based recommendation baselines, one-video synthetic reaction sampler, independent visit-gap sampler, one- and two-visit timestamped log examples, and a descriptive seven-day label calculator exist, but no video-dependent return simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
 
 ## What decision does the model make?
 
@@ -71,6 +71,18 @@ Run `python visit_timing.py` to print a starting visit timestamp and four later 
 ## Generate one visit's event rows
 
 Run `python one_visit_log.py` from this project directory. It connects the candidate generator, **random baseline**, and response sampler for one synthetic U1 visit, then prints each step and writes [generated_one_visit.csv](generated_one_visit.csv). The file records `visit_started`, `video_shown`, and—if clicked—`video_clicked` and `video_playback` with the playback duration. `source=random_baseline` identifies the selection rule on recommendation-related rows; the visit-start row has no selector. These are **practice timestamps and seeded responses**, not observed real behavior. The script does not overwrite an existing file: to regenerate after inspecting it, rename or remove only `generated_one_visit.csv` first. [sample_events.csv](sample_events.csv) remains the separate hand-written teaching example. This first generated log contains **no later visit, engaged-return label, or RL training reward**. The candidate shortlist and private simulator preference are not columns in this event CSV; they need separate contracts before policy training.
+
+## Generate two visits (logging exercise)
+
+Run `python two_visit_log.py` to print U1's first and later visit and write [generated_two_visits.csv](generated_two_visits.csv). Each visit gets one new shortlist and decision ID (D1, D2). The seeded gap between visit starts comes from the **independent** visit-time sampler; the random baseline chooses one video per visit and ignores history. The simulator logs immediate clicks/playback only if they happen. The output prints the event IDs available before D2, including D1's feedback and the new app open but **not** D2's future response. The script will not overwrite an existing output file; [sample_events.csv](sample_events.csv) and [generated_one_visit.csv](generated_one_visit.csv) remain untouched. We have **not** implemented a personalized later decision or a video-dependent return rule, so this exercise cannot show that D1 caused U1 to return.
+
+## Check the seven-day engaged-return label
+
+Run `python engaged_return.py` to read `generated_two_visits.csv` and print D1's **descriptive** status at two observation times. The Oct 8 return without a 30-second playback leaves D1 **pending**; after D1's Oct 11 10:01 deadline, given a log observed through that time, it becomes **no**. The calculator also supports **yes** when a later visit starts after the impression and any video has at least 30 seconds of playback completed by the deadline (inclusive). A 5-second play or a watch on the original visit is not a qualifying *return*. If the log ends before the deadline, pass `observed_through` so the unresolved label stays pending rather than becoming a false no. The timestamps in this exercise are illustrative and the descriptive label **is not an RL training reward or causal attribution**.
+
+## Inspect an engaged-return `yes` example
+
+Run `python yes_return_example.py` to see a separate, **illustrative** V2 watch. It reads `generated_two_visits.csv` and adds one playback row **in memory**: U1 finds video C through search and completes 40 seconds at Oct 8 10:03:40. It prints D1 = `yes` because this is a later engaged visit within D1's window, while D2 = `pending` because D2 was first shown **during** V2 and needs a subsequent visit. It does **not** change either CSV or assert that D1 caused U1's return. This is a deliberately added example, not an extra response sampled by the viewer simulator and not an RL reward.
 
 ## First hand-written event log
 
