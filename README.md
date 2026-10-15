@@ -1,6 +1,6 @@
 # Video recommender RL — learning project
 
-**Status:** early prototype: a candidate generator, random, profile-based, and recorded-watch-history recommendation baselines, one-video synthetic reaction sampler, independent visit-gap sampler, one- and two-visit timestamped log examples, and a descriptive seven-day label calculator exist, but no video-dependent return simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
+**Status:** early prototype: a candidate generator, random, profile-based, and recorded-watch-history recommendation baselines, one-video synthetic reaction sampler, independent visit-gap sampler, one- and two-visit timestamped log examples, a separate hypothetical video-dependent return illustration, and a descriptive seven-day label calculator exist, but no validated return simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
 
 ## What decision does the model make?
 
@@ -83,6 +83,10 @@ Run `python history_baseline.py` to **reconsider D2 only**, without editing `gen
 ## Compare two D2 choices and immediate reactions
 
 Run `python compare_d2.py`. Both hypothetical policies receive the **same** recorded history (E1–E5) and D2 shortlist (B cooking, E music, C sports). With separate fixed policy seeds, random chooses C and the watch-history rule chooses B. Both choices receive the **same seeded synthetic response percentile**: C gets a 5-second play, B a 40-second play, because the invented reaction probabilities differ by topic. This is **one illustrative draw**, not a performance estimate or proof that history usually wins. The private cooking interest is given only to the reaction simulator, never to either policy. Nothing is appended to the saved event CSV; its original D2 was B/ignored under another seed. Visit timing still ignores video choice, so this comparison cannot measure improved returns or train RL. Tests: `python -m unittest discover -p "test*.py"`.
+
+## See a possible return depend on the recommendation
+
+Run `python compare_return_journeys.py` to extend the two hypothetical D2 choices to a *possible later V3*. The return simulator assumes invented chances of opening the app again: 10% after 0 seconds of D2 playback, 30% after 5 seconds, and 70% after 40 seconds. With the same illustrative return draw (0.45), random C gets a 5-second play and no V3; history-based B gets a 40-second play and a V3 on Oct 10. On V3, a separately sampled D3 response produces a 40-second watch, so **D2's** descriptive seven-day engaged-return label is `yes`; without V3, the random branch's D2 remains `pending` until its window closes Oct 15, then becomes `no` with complete observation. An app open *without* a 30-second watch would not qualify, and D3's own return label remains pending. The already-recorded V2 start happened **before D2**, so it cannot be caused by D2. This is one pair of **assumed synthetic** journeys, not evidence about real return probabilities, a causal estimate, or a settled training reward. Branch logs exist only in memory; `generated_two_visits.csv` and the older independent `visit_timing.py` exercise remain unchanged.
 
 ## Check the seven-day engaged-return label
 
