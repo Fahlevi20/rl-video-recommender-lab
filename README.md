@@ -1,6 +1,6 @@
 # Video recommender RL — learning project
 
-**Status:** early prototype: a candidate generator, random and profile-based recommendation baselines, one-video synthetic reaction sampler, independent visit-gap sampler, one- and two-visit timestamped log examples, and a descriptive seven-day label calculator exist, but no video-dependent return simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
+**Status:** early prototype: a candidate generator, random, profile-based, and recorded-watch-history recommendation baselines, one-video synthetic reaction sampler, independent visit-gap sampler, one- and two-visit timestamped log examples, and a descriptive seven-day label calculator exist, but no video-dependent return simulator, trained model, real viewer logs, or measured results exist yet. We will build a realistic *workflow* using synthetic timestamped events, one stage at a time; this is not YouTube's implementation or a production service. See [SYSTEM_DESIGN.md](SYSTEM_DESIGN.md) for the flow and [DISCUSSION_NOTES.md](DISCUSSION_NOTES.md) for decisions and open questions.
 
 ## What decision does the model make?
 
@@ -75,6 +75,14 @@ Run `python one_visit_log.py` from this project directory. It connects the candi
 ## Generate two visits (logging exercise)
 
 Run `python two_visit_log.py` to print U1's first and later visit and write [generated_two_visits.csv](generated_two_visits.csv). Each visit gets one new shortlist and decision ID (D1, D2). The seeded gap between visit starts comes from the **independent** visit-time sampler; the random baseline chooses one video per visit and ignores history. The simulator logs immediate clicks/playback only if they happen. The output prints the event IDs available before D2, including D1's feedback and the new app open but **not** D2's future response. The script will not overwrite an existing output file; [sample_events.csv](sample_events.csv) and [generated_one_visit.csv](generated_one_visit.csv) remain untouched. We have **not** implemented a personalized later decision or a video-dependent return rule, so this exercise cannot show that D1 caused U1 to return.
+
+## Try a watch-history recommendation rule
+
+Run `python history_baseline.py` to **reconsider D2 only**, without editing `generated_two_visits.csv`. The printed history stops before D2: E4 records 40 seconds of video A, whose catalog topic is cooking. The rule takes the **latest recorded playback of at least 30 seconds**, looks up its topic in the catalog, and selects a matching video from D2's actual three-video shortlist (B cooking, E music, C sports). Here it selects **B because of E4**. The original two-visit CSV also shows B, but that B was selected **by chance** using the random baseline; the new rule is a separate demonstration and does not pretend to resimulate D2's response. If no qualifying prior watch or matching candidate exists, the rule picks randomly from the shortlist; equal-topic candidates are tied randomly. A 5-second playback is still logged, but this simple rule does not use it to infer a preferred topic. This hand-written rule cannot see the simulator's private preference or a playback at or after D2, and it is **not RL or evidence of improved returns**. Run `python -m unittest discover -p "test*.py"` to check these cases.
+
+## Compare two D2 choices and immediate reactions
+
+Run `python compare_d2.py`. Both hypothetical policies receive the **same** recorded history (E1–E5) and D2 shortlist (B cooking, E music, C sports). With separate fixed policy seeds, random chooses C and the watch-history rule chooses B. Both choices receive the **same seeded synthetic response percentile**: C gets a 5-second play, B a 40-second play, because the invented reaction probabilities differ by topic. This is **one illustrative draw**, not a performance estimate or proof that history usually wins. The private cooking interest is given only to the reaction simulator, never to either policy. Nothing is appended to the saved event CSV; its original D2 was B/ignored under another seed. Visit timing still ignores video choice, so this comparison cannot measure improved returns or train RL. Tests: `python -m unittest discover -p "test*.py"`.
 
 ## Check the seven-day engaged-return label
 
